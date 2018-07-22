@@ -1,0 +1,305 @@
+<!doctype html>
+
+    <html>
+        <head>
+            <script src="https://cdn.jsdelivr.net/npm/vue"></script>
+            <script src='./oscillate.js'></script>
+            <link rel='stylesheet' href='./index.css'>
+            <link href="https://fonts.googleapis.com/css?family=Dancing+Script" rel="stylesheet">
+        </head>
+        <body>
+            <h1>dyzena</h1>
+            <section id='list'>
+                <form>
+                    root <input v-model='root'placeholder='hz' id='root'><br/>
+                    quantity <input v-model='quantity' placeholder='of notes' id='quantity'><br/>
+                </form>
+                    <button v-on:click="createHarmonics">get</button>
+                    <button v-on:click="bubbleSort">sort</button>
+                    <button v-on:click="trim">trim</button>
+                    <button v-on:click="octave">octave</button>
+                <table cellpadding=3>
+                        <tr v-for='(note, index) in chromatic'>
+                            <td> {{ index++ }} </td>
+                            <td> {{ note.frac }} </td> 
+                            <td> {{ note.dec.toFixed(4).toString().replace(/^0+|0+$/g, '') }} </td>
+                            <td> {{ (root* note.dec).toFixed(3).toString().replace(/0+$|\.0+/, '') }} </td>
+                        </tr>
+                </table>
+            </section>
+            <section id='gui'>
+                <article>
+                        <span v-for='(note, index) in scale'> 
+                            <div class='symbol'>{{ keys[index++].symb }}</div>
+                            <div class='degree'>{{ note.deg }} </div>
+                            <div class='fraction'>{{ note.frack }} </div>
+                            <div class='decimal'>{{ (note.dec).toFixed(3) }} </div>
+                            <div class='val'>{{ note.val.toFixed(3).toString().replace(/0+$|\.0+/, '') }}</div>
+                        </span>
+                </article>
+                <button v-on:click="see">see</button>
+                <button onclick="selector()">selector</button>
+            </section>
+            <p id='info'><i>info</i></p>
+            <script>
+                let tile = document.getElementsByTagName('span');
+                let rootInput = document.getElementById('root');
+                let quantityInput = document.getElementById('quantity');
+
+                let quantityPosition = quantityInput.getBoundingClientRect().x;
+                let rootLeft = quantityPosition - rootInput.getBoundingClientRect().x;
+                
+                rootInput.style.left = `${rootLeft}px`;
+
+                info.onmouseover = () => {
+                    info.innerHTML = `<ul id='about'>
+                        <li>The dyzena project is a dynamic xenophone. </li>
+                        <li>Root is akin to standard pitch. </li>
+                        <li>Use the arrow keys to change the selected note, and that notes position in the scale.</li>
+                        <li>The amount of notes returned are lower than requested because 
+                        the results are one octave, and many of the notes would be 
+                        out of range.</li>
+                        <li>Since this is just intonation opposed to equal-temperament, there are no "key changes", 
+                        but changing the root to the value of another note would effectively become that key. 
+                        Also this scale is more fine tuned in one position than all the keys combined.</li>
+                        <li><i>Google Chrome and Mozilla Firefox are currently the <u>only</u> supported browsers.</i></li>
+                        <img src='chromeFox.png'>
+                        </ul>`
+                }
+                info.onmouseout = () => {
+                    info.innerHTML = '<i>info</i>';
+                }
+
+                let selected = 0, unselected = true;
+
+                function selector() {
+                    if (unselected === true) {
+                        selected = 0;
+                        tile[selected].style.border = 'solid 2px blue'
+                        unselected = false;
+                    } else {
+                        tile[selected].style.border = 'solid 2px white'
+                        selected = undefined;
+                        unselected = true;
+                    }
+                }
+
+                window.addEventListener('keydown', e => {
+                    switch(e.keyCode) {
+                        case 39://right arrow
+                        tile[selected].style.border = 'white solid 2px';
+                        
+                        if (selected === gui.scale.length-1) {
+                            selected = 0;
+                            tile[selected].style.border = 'solid 2px blue';
+                            degree = gui.scale[selected].deg;
+                        } else {
+                            selected++;
+                            tile[selected].style.border = 'solid 2px blue';
+                            degree = gui.scale[selected].deg;
+                        }
+
+                        break;
+                        case 37://left arrow
+                        tile[selected].style.border = 'white solid 2px';
+
+                        if (selected === 0) {
+                            selected = gui.scale.length-1;
+                            tile[selected].style.border = 'solid 2px blue';
+                            degree = gui.scale[selected].deg;
+                        } else {
+                            selected--;
+                            tile[selected].style.border = 'solid 2px blue';
+                            degree = gui.scale[selected].deg;
+                        }
+                        break;
+                        case 38:
+                        gui.changeUp()
+                        e.preventDefault();
+                        break; 
+                        case 40:
+                        gui.changeDown()
+                        e.preventDefault();
+                        break; 
+                    }
+                });
+
+                let list = new Vue({
+                    el:'#list',
+                    data:{
+                        gui:[],
+                        degree:0,
+                        chromatic:[],
+                        quantity:0,
+                        root:0,
+                        octaves:1
+                    },
+                    methods:{
+                        createHarmonics:function() {
+                            let numerator = 1, denominator = 1, fractions = [];
+
+                            for (let i = 0; i < this.quantity; i++) {
+                                if (numerator/denominator <= 2) {
+                                    this.chromatic.push({
+                                        dec:numerator/denominator,
+                                        frac:`${numerator}/${denominator}`
+                                    });
+                                }
+                                denominator++;
+                                    if (denominator > numerator) {
+                                        denominator = 1;
+                                        numerator++;
+                                    }
+                            }
+                        },
+                        bubbleSort:function() {
+                            let dec, frac, i = 0;
+                            while (i < this.chromatic.length) {
+                                for (let j = 1; j < this.chromatic.length-i; j++) {
+                                    if (this.chromatic[j].dec < this.chromatic[j-1].dec) {
+                                        dec = this.chromatic[j].dec;
+                                        frac = this.chromatic[j].frac;
+                                        this.chromatic[j].dec = this.chromatic[j-1].dec;
+                                        this.chromatic[j].frac = this.chromatic[j-1].frac;
+                                        this.chromatic[j-1].dec = dec;
+                                        this.chromatic[j-1].frac = frac;
+                                    }
+                                }
+                                i++;
+                            }
+                        },
+                        trim:function() {
+                            let trimmed;
+                            for (let i = 1; i < this.chromatic.length; i++) {
+                                trimmed = false;
+                                while (trimmed == false) {
+                                    if (this.chromatic[i].dec == this.chromatic[i-1].dec) {
+                                        this.chromatic.splice(i, 1);
+                                    } else {
+                                        trimmed = true;
+                                    }
+                                }
+                            }
+                        },
+                        octave:function() {
+                            let thing, newThing, slash, newest;
+                            for (let i in this.chromatic) {
+                                slash = this.chromatic[i].frac.indexOf('/');
+                                thing = this.chromatic[i].frac.slice(0, slash);
+                                newest = parseInt(thing)*2
+                                newThing = this.chromatic[i].frac.replace(/\d+/, newest);
+                                this.chromatic.push({
+                                    dec:this.chromatic[i].dec*2,
+                                    frac:newThing
+                                })
+                            }
+                        }
+                    }
+                });
+                let degree;
+                let gui = new Vue({
+                    el:'#gui',
+                    data:{
+                        scale:[],
+                        keys:[
+                        {symb:'1', numb:49},
+                        {symb:'2', numb:50},
+                        {symb:'3', numb:51},
+                        {symb:'4', numb:52},
+                        {symb:'5', numb:53},
+                        {symb:'6', numb:54},
+                        {symb:'7', numb:55},
+                        {symb:'8', numb:56},
+                        {symb:'9', numb:57},
+                        {symb:'0', numb:48},
+                        {symb:'Q', numb:81},
+                        {symb:'W', numb:87},
+                        {symb:'E', numb:69},
+                        {symb:'R', numb:82},
+                        {symb:'T', numb:84},
+                        {symb:'Y', numb:89},
+                        {symb:'U', numb:85},
+                        {symb:'I', numb:73},
+                        {symb:'O', numb:79},
+                        {symb:'P', numb:80},
+                        {symb:'A', numb:65},
+                        {symb:'S', numb:83},
+                        {symb:'D', numb:68},
+                        {symb:'F', numb:70},
+                        {symb:'G', numb:71},
+                        {symb:'H', numb:72},
+                        {symb:'J', numb:74},
+                        {symb:'K', numb:75},
+                        {symb:'L', numb:76},
+                        {symb:';', numb:186},
+                        {symb:'Z', numb:90},
+                        {symb:'X', numb:88},
+                        {symb:'C', numb:67},
+                        {symb:'V', numb:86},
+                        {symb:'B', numb:66},
+                        {symb:'N', numb:78},
+                        {symb:'M', numb:77},
+                        {symb:'<', numb:188},
+                        {symb:'>', numb:190},
+                        {symb:'/', numb:191}]
+                    },
+                    methods:{
+                        see:function() {
+                            if (this.scale.length) {
+                                this.scale.splice(0, this.scale.length)
+                            }
+                            
+                            let guiScalePosition = Math.floor(list.chromatic.length/40);
+                            let plusScalePosition = guiScalePosition;
+
+                            if (list.chromatic.length <= 40) {
+                                for (let i = 0; i < 40; i++) {
+                                    this.scale.push({
+                                        dec:list.chromatic[i].dec,
+                                        frack:list.chromatic[i].frac,
+                                        deg:i,
+                                        val:list.root* list.chromatic[i].dec
+                                    })
+                                }
+                            } 
+                            if (list.chromatic.length > 40) {
+                                for (let i = 0; i < 40; i++) {
+                                    this.scale.push({
+                                        dec:list.chromatic[guiScalePosition].dec,
+                                        frack:list.chromatic[guiScalePosition].frac,
+                                        deg:guiScalePosition,
+                                        val:list.root* list.chromatic[guiScalePosition].dec
+                                    })
+                                    guiScalePosition += plusScalePosition;
+                                }
+                            }
+                        },
+                        changeUp:function() {
+                            if (degree === undefined) {
+                                degree = selected;
+                            }
+                            if (degree === list.chromatic.length) {
+                                degree = 0;
+                            }
+                                this.scale[selected].frack = list.chromatic[++degree].frac;
+                                this.scale[selected].dec = list.chromatic[degree].dec;
+                                this.scale[selected].deg = degree;
+                                this.scale[selected].val = list.root* list.chromatic[degree].dec;
+                        },
+                        changeDown:function() {
+                            if (degree === undefined) {
+                                degree = selected;
+                            }
+                            if (degree === 0) {
+                                degree = list.chromatic.length;
+                            }
+                                this.scale[selected].frack = list.chromatic[--degree].frac;
+                                this.scale[selected].dec = list.chromatic[degree].dec;
+                                this.scale[selected].deg = degree;
+                                this.scale[selected].val = list.root* list.chromatic[degree].dec;
+                        }
+                    }
+                })
+            </script>
+        </body>
+    </html>
